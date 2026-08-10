@@ -36,6 +36,35 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown")
 
 
+async def clean_start_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Elimina el mensaje actual de resultados y despliega un nuevo Menú Principal impecable."""
+    query = update.callback_query
+    await query.answer()
+
+    try:
+        await query.message.delete()
+    except Exception as e:
+        logger.warning(f"No se pudo eliminar el mensaje: {e}")
+
+    keyboard = [
+        [InlineKeyboardButton("🎵 Buscar por Género (Artistas)", callback_data="mode:genres")],
+        [InlineKeyboardButton("🎪 Buscar por Festival", callback_data="mode:events")],
+        [InlineKeyboardButton("🎲 Set Aleatorio (Sorpresa)", callback_data="mode:random")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    text = (
+        "🎧 *Bienvenido a LiveSets Finder Bot*\n\n"
+        "¿Qué querés buscar hoy? Seleccioná una opción:"
+    )
+
+    await context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=text,
+        reply_markup=reply_markup,
+        parse_mode="Markdown"
+    )
+
+
 async def show_genres_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Muestra el menú de géneros musicales."""
     query = update.callback_query
@@ -160,7 +189,6 @@ async def select_item_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         event_name = data.split(":", 1)[1]
         context.user_data['search_type'] = "event"
         context.user_data['selected_item'] = event_name
-        # Buscar directamente 12 meses para festival específico
         await execute_search(update, context, months=12)
 
 
@@ -199,7 +227,7 @@ async def random_set_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             candidates.append({
                 "name": ev.get("name"),
                 "sources": ev.get("sources", []),
-                "type": f"Festival"
+                "type": "Festival"
             })
 
     if not candidates:
@@ -220,7 +248,10 @@ async def random_set_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     keyboard = [
         [InlineKeyboardButton("🎲 Buscar Otro Set Aleatorio", callback_data="mode:random")],
-        [InlineKeyboardButton("« Menú Principal", callback_data="back:main")]
+        [
+            InlineKeyboardButton("🏠 Menú Principal", callback_data="back:main"),
+            InlineKeyboardButton("🗑️ Limpiar e Inicio", callback_data="clean:start")
+        ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -293,7 +324,6 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
                 results_blocks.append("\n".join(block))
 
     elif search_type == "event":
-        # Búsqueda por festival específico (12 meses)
         events_config = get_events_config()
         event_sources = []
         for cat_list in events_config.values():
@@ -313,7 +343,6 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
             results_blocks.append("\n".join(block))
 
     elif search_type == "all_events":
-        # Búsqueda concurrente en todos los festivales
         events_config = get_events_config()
         all_festivals = []
         for cat_list in events_config.values():
@@ -335,12 +364,20 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
                     block.append(f"• [{title_clean}]({item['url']}){dur_info}")
                 results_blocks.append("\n".join(block))
 
+    nav_keyboard = [
+        [
+            InlineKeyboardButton("🏠 Menú Principal", callback_data="back:main"),
+            InlineKeyboardButton("🗑️ Limpiar e Inicio", callback_data="clean:start")
+        ]
+    ]
+    nav_markup = InlineKeyboardMarkup(nav_keyboard)
+
     if found_total == 0:
         final_msg = f"🚫 No se encontraron {label} en los últimos *{months}* meses."
         if query:
-            await query.edit_message_text(final_msg, parse_mode="Markdown")
+            await query.edit_message_text(final_msg, reply_markup=nav_markup, parse_mode="Markdown")
         else:
-            await update.message.reply_text(final_msg, parse_mode="Markdown")
+            await update.message.reply_text(final_msg, reply_markup=nav_markup, parse_mode="Markdown")
         return
 
     header = f"🎧 *LiveSets encontrados: {selected_item}* (últimos {months} meses)\n\n"
@@ -349,9 +386,9 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
     chunk_size = 3800
     if len(full_message) <= chunk_size:
         if query:
-            await query.edit_message_text(full_message, parse_mode="Markdown", disable_web_page_preview=True)
+            await query.edit_message_text(full_message, reply_markup=nav_markup, parse_mode="Markdown", disable_web_page_preview=True)
         else:
-            await update.message.reply_text(full_message, parse_mode="Markdown", disable_web_page_preview=True)
+            await update.message.reply_text(full_message, reply_markup=nav_markup, parse_mode="Markdown", disable_web_page_preview=True)
     else:
         chunks = []
         curr_chunk = header
@@ -366,11 +403,13 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
 
         if query:
             await query.edit_message_text(chunks[0], parse_mode="Markdown", disable_web_page_preview=True)
-            for ch in chunks[1:]:
+            for ch in chunks[1:-1]:
                 await query.message.reply_text(ch, parse_mode="Markdown", disable_web_page_preview=True)
+            await query.message.reply_text(chunks[-1], reply_markup=nav_markup, parse_mode="Markdown", disable_web_page_preview=True)
         else:
-            for ch in chunks:
+            for ch in chunks[:-1]:
                 await update.message.reply_text(ch, parse_mode="Markdown", disable_web_page_preview=True)
+            await update.message.reply_text(chunks[-1], reply_markup=nav_markup, parse_mode="Markdown", disable_web_page_preview=True)
 
 
 async def months_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -415,6 +454,7 @@ def setup_handlers(app: Application):
     """Registra todos los handlers en la aplicación de Telegram."""
     app.add_handler(CommandHandler("start", start_command))
     app.add_handler(CallbackQueryHandler(start_command, pattern="^back:main$"))
+    app.add_handler(CallbackQueryHandler(clean_start_callback, pattern="^clean:start$"))
     app.add_handler(CallbackQueryHandler(show_genres_menu, pattern="^mode:genres$"))
     app.add_handler(CallbackQueryHandler(show_events_menu, pattern="^mode:events$"))
     app.add_handler(CallbackQueryHandler(specific_events_menu, pattern="^event_mode:specific$"))
