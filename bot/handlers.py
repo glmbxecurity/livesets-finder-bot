@@ -177,6 +177,7 @@ async def show_channels_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
     keyboard = [
         [InlineKeyboardButton("🔥 Sets Más Recientes (Último Mes)", callback_data="channel_mode:all")],
         [InlineKeyboardButton("🎯 Seleccionar Canal Específico (Último Año)", callback_data="channel_mode:specific")],
+        [InlineKeyboardButton("🎲 Set Aleatorio de Canal (Sorpresa)", callback_data="channel_mode:random")],
         [InlineKeyboardButton("« Volver al Menú Principal", callback_data="back:main")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -283,6 +284,76 @@ async def all_channels_callback(update: Update, context: ContextTypes.DEFAULT_TY
     context.user_data['search_type'] = "all_channels"
     context.user_data['selected_item'] = "Todos los Canales"
     await execute_search(update, context, months=1)
+
+
+async def random_channel_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Sortea y busca un set aleatorio únicamente dentro de los canales de YouTube."""
+    query = update.callback_query
+    await query.answer()
+
+    await query.edit_message_text("🎲 *Sorteando y buscando un set en los canales de YouTube...*", parse_mode="Markdown")
+
+    channels_config = get_channels_config()
+    candidates = []
+
+    for cat, channel_list in channels_config.items():
+        for ch in channel_list:
+            candidates.append({
+                "name": ch.get("name"),
+                "sources": ch.get("sources", []),
+                "type": "Canal YouTube"
+            })
+
+    if not candidates:
+        await query.edit_message_text("❌ No hay canales configurados en `channels.json`.")
+        return
+
+    attempts = 0
+    found_set = None
+    chosen_candidate = None
+
+    while attempts < 3 and not found_set:
+        attempts += 1
+        candidate = random.choice(candidates)
+        sets = await fetch_recent_sets_async(candidate["name"], candidate["sources"], 12)
+        if sets:
+            found_set = random.choice(sets)
+            chosen_candidate = candidate
+
+    keyboard = [
+        [InlineKeyboardButton("🎲 Buscar Otro Set de Canal", callback_data="channel_mode:random")],
+        [
+            InlineKeyboardButton("« Volver a Canales", callback_data="mode:channels"),
+            InlineKeyboardButton("🏠 Inicio", callback_data="back:main")
+        ],
+        [InlineKeyboardButton("🗑️ Limpiar e Inicio", callback_data="clean:start")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    if not found_set:
+        await query.edit_message_text(
+            "🚫 No se encontró ningún set en los canales en este intento. ¡Prueba otra vez!",
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+        return
+
+    title_clean = clean_markdown_title(found_set['title'])
+    dur_info = f" (`{found_set['duration_min']} min`)" if found_set.get('duration_min') else ""
+
+    msg_text = (
+        "📺 *Set Aleatorio de Canal Found!*\n\n"
+        f"📍 *{clean_markdown_title(chosen_candidate['name'])}* _(Canal YouTube)_\n"
+        f"🎧 [{title_clean}]({found_set['url']}){dur_info}\n\n"
+        f"🗓️ Fecha/Estado: `{found_set.get('upload_date', 'Desconocida')}`"
+    )
+
+    await query.edit_message_text(
+        msg_text,
+        reply_markup=reply_markup,
+        parse_mode="Markdown",
+        disable_web_page_preview=True
+    )
 
 
 async def random_set_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -595,6 +666,7 @@ def setup_handlers(app: Application):
     app.add_handler(CallbackQueryHandler(all_events_callback, pattern="^event_mode:all$"))
     app.add_handler(CallbackQueryHandler(specific_channels_menu, pattern="^channel_mode:specific$"))
     app.add_handler(CallbackQueryHandler(all_channels_callback, pattern="^channel_mode:all$"))
+    app.add_handler(CallbackQueryHandler(random_channel_callback, pattern="^channel_mode:random$"))
     app.add_handler(CallbackQueryHandler(random_set_callback, pattern="^mode:random$"))
     app.add_handler(CallbackQueryHandler(select_item_callback, pattern="^select_(genre|event|channel):"))
     app.add_handler(CallbackQueryHandler(months_callback, pattern="^months:"))
