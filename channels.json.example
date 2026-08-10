@@ -2,6 +2,8 @@
   "Canales de YouTube": [
     { "name": "Tomorrowland", "sources": ["https://www.youtube.com/@Tomorrowland/videos"] },
     { "name": "Q-dance", "sources": ["https://www.youtube.com/@qdance/videos"] },
+    { "name": "Blackworks", "sources": ["https://www.youtube.com/@BlackworksClub/videos"] },
+    { "name": "Awakenings", "sources": ["https://www.youtube.com/@awakenings/videos"] },
     { "name": "FACE 2 FACE DIGITAL TV", "sources": ["https://www.youtube.com/@FACE2FACEDIGITALTV/videos"] },
     { "name": "HÖR BERLIN", "sources": ["https://www.youtube.com/@HOERBERLIN/videos"] },
     { "name": "Unreal Germany", "sources": ["https://www.youtube.com/@UnrealGermany/videos"] },
@@ -10,6 +12,7 @@
     { "name": "Mixmag", "sources": ["https://www.youtube.com/@mixmag/videos"] },
     { "name": "Boiler Room", "sources": ["https://www.youtube.com/@boilerroom/videos"] },
     { "name": "Gotec Club", "sources": ["https://www.youtube.com/@gotecclub/videos"] },
-    { "name": "Verknipt", "sources": ["https://www.youtube.com/@VerkniptEvents/videos"] }
+    { "name": "Verknipt", "sources": ["https://www.youtube.com/@VerkniptEvents/videos"] },
+    { "name": "Teletech", "sources": ["https://www.youtube.com/@teletechuk/videos"] }
   ]
 }

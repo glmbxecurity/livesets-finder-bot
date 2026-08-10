@@ -21,6 +21,12 @@
     { "name": "Anyma", "sources": [] }
   ],
   "Hard Techno": [
+    { "name": "Oguz", "sources": [] },
+    { "name": "Charlie Sparks", "sources": [] },
+    { "name": "I Hate Models", "sources": [] },
+    { "name": "Trym", "sources": [] },
+    { "name": "Shlømo", "sources": [] },
+    { "name": "Alignment", "sources": [] },
     { "name": "Fatima Hajji", "sources": [] },
     { "name": "Klangkuenstler", "sources": [] },
     { "name": "Kobosil", "sources": [] },
@@ -36,6 +42,9 @@
     { "name": "Serafina", "sources": [] }
   ],
   "Hard Dance": [
+    { "name": "Dual Damage", "sources": [] },
+    { "name": "Sickmode", "sources": [] },
+    { "name": "Rebelion", "sources": [] },
     { "name": "Sub Zero Project", "sources": [] },
     { "name": "TNT", "sources": [] },
     { "name": "Ran-D", "sources": [] },

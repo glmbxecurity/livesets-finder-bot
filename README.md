@@ -17,7 +17,7 @@ Permite explorar por **Géneros / Artistas**, **Festivales**, **Canales Oficiale
 
 ## 📖 ¿En qué consiste este proyecto?
 
-El bot lee dinámicamente los artistas desde `artists.json` (4 géneros y 44 artistas), los eventos desde `events.json` (26 festivales icónicos) y los canales oficiales desde `channels.json` (11 canales principales). Ejecuta consultas concurrentes en segundo plano usando un pool de hilos (`ThreadPoolExecutor` + `asyncio.gather`), reduciendo los tiempos de escaneo masivo a solo ~35 segundos.
+El bot lee dinámicamente los artistas desde `artists.json` (4 géneros y 53 artistas), los eventos desde `events.json` (26 festivales icónicos) y los canales oficiales desde `channels.json` (14 canales principales). Ejecuta consultas concurrentes en segundo plano usando un pool de hilos (`ThreadPoolExecutor` + `asyncio.gather`), reduciendo los tiempos de escaneo masivo a solo ~35 segundos.
 
 ### 🌟 Características Destacadas:
 * **4 Modos de Búsqueda Integrados**: 
@@ -27,7 +27,7 @@ El bot lee dinámicamente los artistas desde `artists.json` (4 géneros y 44 art
     * 🎯 *Festival Específico (Último Año)*: Búsqueda directa en los últimos 12 meses.
     * 🎲 *Set Aleatorio de Festival*: Sorteo exclusivo dentro de los 26 festivales.
   * 📺 **Canales Oficiales de YouTube**:
-    * 🔥 *Sets Más Recientes (Último Mes)*: Escaneo paralelo de los 11 canales oficiales.
+    * 🔥 *Sets Más Recientes (Último Mes)*: Escaneo paralelo de los 14 canales oficiales.
     * 🎯 *Canal Específico (Último Año)*: Búsqueda directa en el canal seleccionado.
     * 🎲 *Set Aleatorio de Canal*: Sorteo exclusivo dentro de los canales oficiales.
   * 🎲 **Set Aleatorio Global (Sorpresa)**: Sorteo sorpresa entre todos los artistas, festivales y canales configurados.
