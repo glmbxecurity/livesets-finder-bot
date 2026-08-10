@@ -1,8 +1,15 @@
 {
   "Canales de YouTube": [
     { "name": "Tomorrowland", "sources": ["https://www.youtube.com/@Tomorrowland/videos"] },
+    { "name": "Q-dance", "sources": ["https://www.youtube.com/@qdance/videos"] },
+    { "name": "FACE 2 FACE DIGITAL TV", "sources": ["https://www.youtube.com/@FACE2FACEDIGITALTV/videos"] },
     { "name": "HÖR BERLIN", "sources": ["https://www.youtube.com/@HOERBERLIN/videos"] },
+    { "name": "Unreal Germany", "sources": ["https://www.youtube.com/@UnrealGermany/videos"] },
+    { "name": "Monegros Desert Festival", "sources": ["https://www.youtube.com/@MonegrosDesertFestival/videos"] },
+    { "name": "Intents Festival", "sources": ["https://www.youtube.com/@intentsfestival/videos"] },
+    { "name": "Mixmag", "sources": ["https://www.youtube.com/@mixmag/videos"] },
     { "name": "Boiler Room", "sources": ["https://www.youtube.com/@boilerroom/videos"] },
-    { "name": "Q-dance", "sources": ["https://www.youtube.com/@qdance/videos"] }
+    { "name": "Gotec Club", "sources": ["https://www.youtube.com/@gotecclub/videos"] },
+    { "name": "Verknipt", "sources": ["https://www.youtube.com/@VerkniptEvents/videos"] }
   ]
 }

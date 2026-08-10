@@ -2,20 +2,56 @@
   "Techno": [
     { "name": "Amelie Lens", "sources": [] },
     { "name": "Charlotte de Witte", "sources": [] },
+    { "name": "HI-LO", "sources": [] },
+    { "name": "Eli Brown", "sources": [] },
+    { "name": "Space 92", "sources": [] },
+    { "name": "Reinier Zonneveld", "sources": [] },
+    { "name": "Indira Paganotto", "sources": [] },
+    { "name": "Marlon Hoffstadt", "sources": [] },
+    { "name": "Hector Oaks", "sources": [] },
+    { "name": "VE/RA", "sources": [] },
     { "name": "Andres Campo", "sources": [] },
     { "name": "Novah", "sources": [] }
   ],
   "Melodic Techno": [
     { "name": "Miss Monique", "sources": [] },
+    { "name": "Vintage Culture", "sources": [] },
+    { "name": "Meduza", "sources": [] },
+    { "name": "Boris Brejcha", "sources": [] },
     { "name": "Anyma", "sources": [] }
   ],
   "Hard Techno": [
     { "name": "Fatima Hajji", "sources": [] },
     { "name": "Klangkuenstler", "sources": [] },
-    { "name": "Sara Landry", "sources": [] }
+    { "name": "Kobosil", "sources": [] },
+    { "name": "999999999", "sources": [] },
+    { "name": "Cloudy", "sources": [] },
+    { "name": "Sara Landry", "sources": [] },
+    { "name": "Restricted", "sources": [] },
+    { "name": "Nico Moreno", "sources": [] },
+    { "name": "Samuel Moreiro", "sources": [] },
+    { "name": "Luciid", "sources": [] },
+    { "name": "Nikolina", "sources": [] },
+    { "name": "Teletech", "sources": [] },
+    { "name": "Serafina", "sources": [] }
   ],
   "Hard Dance": [
     { "name": "Sub Zero Project", "sources": [] },
-    { "name": "Rooler", "sources": [] }
+    { "name": "TNT", "sources": [] },
+    { "name": "Ran-D", "sources": [] },
+    { "name": "Coone", "sources": [] },
+    { "name": "Outsiders", "sources": [] },
+    { "name": "D-Sturb", "sources": [] },
+    { "name": "4444 of a kind", "sources": [] },
+    { "name": "D-Block & S-te-Fan", "sources": [] },
+    { "name": "Rooler", "sources": [] },
+    { "name": "The Straikerz", "sources": [] },
+    { "name": "Sound Rush", "sources": [] },
+    { "name": "Mandy", "sources": [] },
+    { "name": "Aversion", "sources": [] },
+    { "name": "Vertile", "sources": [] },
+    { "name": "DJ Isaac", "sources": [] },
+    { "name": "Creeds", "sources": [] },
+    { "name": "Primeshock", "sources": [] }
   ]
 }

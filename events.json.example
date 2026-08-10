@@ -1,8 +1,30 @@
 {
   "Festivales": [
     { "name": "Tomorrowland", "sources": [] },
-    { "name": "Awakenings", "sources": [] },
+    { "name": "Ultra Music Festival", "sources": [] },
+    { "name": "Electric Daisy Carnival", "sources": [] },
+    { "name": "UNTOLD", "sources": [] },
     { "name": "Defqon.1", "sources": [] },
-    { "name": "Ultra Music Festival", "sources": [] }
+    { "name": "Intents Festival", "sources": [] },
+    { "name": "Decibel Outdoor", "sources": [] },
+    { "name": "Kappa FuturFestival", "sources": [] },
+    { "name": "Glastonbury", "sources": [] },
+    { "name": "Coachella", "sources": [] },
+    { "name": "Sunburn Festival", "sources": [] },
+    { "name": "Creamfields", "sources": [] },
+    { "name": "Monegros Desert Festival", "sources": [] },
+    { "name": "Time Warp", "sources": [] },
+    { "name": "Blackworks", "sources": [] },
+    { "name": "Amsterdam Music Festival", "sources": [] },
+    { "name": "Parookaville", "sources": [] },
+    { "name": "Awakenings", "sources": [] },
+    { "name": "Sonus Festival", "sources": [] },
+    { "name": "Verknipt", "sources": [] },
+    { "name": "Rampage", "sources": [] },
+    { "name": "Mysteryland", "sources": [] },
+    { "name": "Electric Love Festival", "sources": [] },
+    { "name": "EDC Las Vegas", "sources": [] },
+    { "name": "EDC Orlando", "sources": [] },
+    { "name": "Exit Festival", "sources": [] }
   ]
 }

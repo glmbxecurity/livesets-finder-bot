@@ -11,27 +11,32 @@
 
 **LiveSets Finder Bot** es un bot de Telegram stateless y de alto rendimiento construido en Python. Permite rastrear, filtrar y listar de forma asíncrona y paralela sets musicales, sesiones en vivo y podcasts desde **YouTube** y **SoundCloud**.
 
-Permite explorar por **Géneros / Artistas**, por **Festivales**, por **Canales de YouTube**, o descubrir un **Set Aleatorio**, filtrando el contenido reciente con una regla estricta de duración mínima (≥ 40 minutos) para excluir canciones sueltas o previews.
+Permite explorar por **Géneros / Artistas**, **Festivales**, **Canales Oficiales de YouTube**, o descubrir un **Set Aleatorio**, filtrando el contenido reciente con una regla estricta de duración mínima (≥ 40 minutos) para excluir canciones sueltas o previews.
 
 ---
 
 ## 📖 ¿En qué consiste este proyecto?
 
-El bot lee los artistas desde `artists.json` (4 géneros y 44 artistas), los eventos desde `events.json` (26 festivales icónicos) y los canales oficiales desde `channels.json` (11 canales principales). Ejecuta consultas concurrentes en segundo plano usando un pool de hilos (`ThreadPoolExecutor` + `asyncio.gather`), reduciendo tiempos de escaneo en paralelo a solo ~35 segundos.
+El bot lee dinámicamente los artistas desde `artists.json` (4 géneros y 44 artistas), los eventos desde `events.json` (26 festivales icónicos) y los canales oficiales desde `channels.json` (11 canales principales). Ejecuta consultas concurrentes en segundo plano usando un pool de hilos (`ThreadPoolExecutor` + `asyncio.gather`), reduciendo los tiempos de escaneo masivo a solo ~35 segundos.
 
 ### 🌟 Características Destacadas:
 * **4 Modos de Búsqueda Integrados**: 
-  * 🎵 **Por Género (Artistas)**: Selección por género musical (Techno, Melodic Techno, Hard Techno, Hard Dance) y rango de meses (`1`, `3`, `6`, `12` meses).
+  * 🎵 **Por Género (Artistas)**: Selección por género (Techno, Melodic Techno, Hard Techno, Hard Dance), filtros de antigüedad (`1`, `3`, `6`, `12` meses) y botón de **`🎲 Set Aleatorio (Género)`**.
   * 🎪 **Por Festival**:
     * 🔥 *Sets Más Recientes (Último Mes)*: Escaneo paralelo de los 26 festivales en los últimos 30 días.
-    * 🎯 *Festival Específico (Último Año)*: Búsqueda directa fijada a los últimos 12 meses.
-  * 📺 **Canales de YouTube**:
-    * 🔥 *Sets Más Recientes (Último Mes)*: Escaneo paralelo de los 11 canales en los últimos 30 días.
-    * 🎯 *Canal Específico (Último Año)*: Búsqueda de sets directamente en el canal elegido.
-  * 🎲 **Set Aleatorio (Sorpresa)**: Sorteo de un set aleatorio en el rango del último año con un clic.
+    * 🎯 *Festival Específico (Último Año)*: Búsqueda directa en los últimos 12 meses.
+    * 🎲 *Set Aleatorio de Festival*: Sorteo exclusivo dentro de los 26 festivales.
+  * 📺 **Canales Oficiales de YouTube**:
+    * 🔥 *Sets Más Recientes (Último Mes)*: Escaneo paralelo de los 11 canales oficiales.
+    * 🎯 *Canal Específico (Último Año)*: Búsqueda directa en el canal seleccionado.
+    * 🎲 *Set Aleatorio de Canal*: Sorteo exclusivo dentro de los canales oficiales.
+  * 🎲 **Set Aleatorio Global (Sorpresa)**: Sorteo sorpresa entre todos los artistas, festivales y canales configurados.
 * **Procesamiento Concurrente de Alto Rendimiento**: Peticiones a YouTube y SoundCloud optimizadas mediante hilos concurrentes para evitar bloqueos del event loop y reducir latencias.
 * **Filtrado Inteligente (≥ 40 min)**: Validación estricta por palabras clave en vivo y duración mínima de 40 minutos para descartar singles, remixes o canciones.
-* **Botones de Navegación y Limpieza**: Cada lista incluye accesos a *Menú Principal* y *Limpiar e Inicio* (para borrar el mensaje previo y reiniciar la charla).
+* **Navegación Limpia & Auto-Eliminación**:
+  * **`🏠 Menú Principal`**: Retorna al menú de inicio.
+  * **`🗑️ Limpiar e Inicio`**: Elimina automáticamente el mensaje de resultados anterior y envía una pantalla limpia.
+* **Escapado Seguro de Markdown**: Sanitizado automático de títulos (`clean_markdown_title`) para evitar fallos de parseo en Telegram.
 * **Sin Reinicios (Live Reload)**: Los archivos `artists.json`, `events.json` y `channels.json` se leen en tiempo real en cada consulta.
 * **Multi-Despliegue**: Soporte para **Systemd (Linux Mint / Ubuntu / Debian)** y **OpenRC (Alpine Linux LXC)**.
 
@@ -112,10 +117,10 @@ python main.py
 
 1. Enviá `/start` para desplegar el menú principal.
 2. Navegá por los botones interactivos:
-   * **🎵 Buscar por Género (Artistas)** → Elegí género y meses.
-   * **🎪 Buscar por Festival** → Elegí *Último Mes* o un *Festival Específico*.
-   * **📺 Canales de YouTube** → Elegí *Último Mes* o un *Canal Específico*.
-   * **🎲 Set Aleatorio (Sorpresa)** → Obtené un set recomendado al azar.
+   * **🎵 Buscar por Género (Artistas)** → Elegí género, rango de meses o set aleatorio de ese género.
+   * **🎪 Buscar por Festival** → Elegí *Último Mes*, *Festival Específico* o *Set Aleatorio de Festival*.
+   * **📺 Canales de YouTube** → Elegí *Último Mes*, *Canal Específico* o *Set Aleatorio de Canal*.
+   * **🎲 Set Aleatorio (Sorpresa)** → Obtené un set recomendado al azar de toda la base de datos.
 
 ---
 
@@ -164,11 +169,11 @@ livesets-finder-bot/
 ├── .env.example              # Plantilla de variables de entorno
 ├── .gitignore                # Exclusiones de Git
 ├── artists.json              # 44 Artistas activos organizados por 4 géneros
-├── artists.json.example      # Plantilla de artistas
+├── artists.json.example      # Plantilla y respaldo completo de artistas
 ├── events.json               # 26 Festivales activos
-├── events.json.example       # Plantilla de eventos
+├── events.json.example       # Plantilla y respaldo completo de eventos
 ├── channels.json             # 11 Canales oficiales de YouTube
-├── channels.json.example     # Plantilla de canales
+├── channels.json.example     # Plantilla y respaldo completo de canales
 ├── livesetsfinder.png        # Logo oficial del bot
 ├── main.py                   # Entrypoint del bot de Telegram
 ├── requirements.txt          # Dependencias de Python fijadas
