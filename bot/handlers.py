@@ -16,6 +16,15 @@ from services.scraper import fetch_recent_sets_async
 logger = logging.getLogger(__name__)
 
 
+def clean_markdown_title(title: str) -> str:
+    """Escapa adecuadamente caracteres conflictivos para Markdown de Telegram."""
+    if not title:
+        return ""
+    for char in ['[', ']', '*', '_', '`']:
+        title = title.replace(char, f'\\{char}')
+    return title
+
+
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Comando /start: Muestra el menú principal para elegir Géneros, Festivales o Set Aleatorio."""
     keyboard = [
@@ -263,12 +272,12 @@ async def random_set_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return
 
-    title_clean = found_set['title'].replace("[", "\\[").replace("]", "\\]")
+    title_clean = clean_markdown_title(found_set['title'])
     dur_info = f" (`{found_set['duration_min']} min`)" if found_set.get('duration_min') else ""
 
     msg_text = (
         "🎲 *Set Aleatorio Sorpresa Found!*\n\n"
-        f"📍 *{chosen_candidate['name']}* _{chosen_candidate['type']}_\n"
+        f"📍 *{clean_markdown_title(chosen_candidate['name'])}* _{clean_markdown_title(chosen_candidate['type'])}_\n"
         f"🎧 [{title_clean}]({found_set['url']}){dur_info}\n\n"
         f"🗓️ Fecha/Estado: `{found_set.get('upload_date', 'Desconocida')}`"
     )
@@ -295,7 +304,7 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
             await update.message.reply_text(msg)
         return
 
-    label = f"sets de *{selected_item}*" if search_type in ("event", "all_events") else f"sets del género *{selected_item}*"
+    label = f"sets de *{clean_markdown_title(selected_item)}*" if search_type in ("event", "all_events") else f"sets del género *{clean_markdown_title(selected_item)}*"
     status_text = f"🔍 Buscando {label} (últimos *{months}* meses)...\nEsto puede demorar unos segundos."
     
     if query:
@@ -316,9 +325,9 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
             if sets:
                 name = artist.get('name', 'Artista')
                 found_total += len(sets)
-                block = [f"👤 *{name}*"]
+                block = [f"👤 *{clean_markdown_title(name)}*"]
                 for item in sets[:5]:
-                    title_clean = item['title'].replace("[", "\\[").replace("]", "\\]")
+                    title_clean = clean_markdown_title(item['title'])
                     dur_info = f" (`{item['duration_min']} min`)" if item.get('duration_min') else ""
                     block.append(f"• [{title_clean}]({item['url']}){dur_info}")
                 results_blocks.append("\n".join(block))
@@ -335,9 +344,9 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
         sets = await fetch_recent_sets_async(selected_item, event_sources, months)
         if sets:
             found_total += len(sets)
-            block = [f"🎪 *{selected_item}*"]
+            block = [f"🎪 *{clean_markdown_title(selected_item)}*"]
             for item in sets[:8]:
-                title_clean = item['title'].replace("[", "\\[").replace("]", "\\]")
+                title_clean = clean_markdown_title(item['title'])
                 dur_info = f" (`{item['duration_min']} min`)" if item.get('duration_min') else ""
                 block.append(f"• [{title_clean}]({item['url']}){dur_info}")
             results_blocks.append("\n".join(block))
@@ -357,9 +366,9 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
             if sets:
                 ev_name = ev.get("name")
                 found_total += len(sets)
-                block = [f"🎪 *{ev_name}*"]
+                block = [f"🎪 *{clean_markdown_title(ev_name)}*"]
                 for item in sets[:3]:
-                    title_clean = item['title'].replace("[", "\\[").replace("]", "\\]")
+                    title_clean = clean_markdown_title(item['title'])
                     dur_info = f" (`{item['duration_min']} min`)" if item.get('duration_min') else ""
                     block.append(f"• [{title_clean}]({item['url']}){dur_info}")
                 results_blocks.append("\n".join(block))
@@ -380,7 +389,7 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
             await update.message.reply_text(final_msg, reply_markup=nav_markup, parse_mode="Markdown")
         return
 
-    header = f"🎧 *LiveSets encontrados: {selected_item}* (últimos {months} meses)\n\n"
+    header = f"🎧 *LiveSets encontrados: {clean_markdown_title(selected_item)}* (últimos {months} meses)\n\n"
     full_message = header + "\n\n".join(results_blocks)
 
     chunk_size = 3800
