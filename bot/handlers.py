@@ -10,7 +10,7 @@ from telegram.ext import (
     ContextTypes,
     filters,
 )
-from config.settings import get_artists_config, get_events_config
+from config.settings import get_artists_config, get_events_config, get_channels_config
 from services.scraper import fetch_recent_sets_async
 
 logger = logging.getLogger(__name__)
@@ -26,10 +26,11 @@ def clean_markdown_title(title: str) -> str:
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Comando /start: Muestra el menú principal para elegir Géneros, Festivales o Set Aleatorio."""
+    """Comando /start: Muestra el menú principal con Géneros, Festivales, Canales y Set Aleatorio."""
     keyboard = [
         [InlineKeyboardButton("🎵 Buscar por Género (Artistas)", callback_data="mode:genres")],
         [InlineKeyboardButton("🎪 Buscar por Festival", callback_data="mode:events")],
+        [InlineKeyboardButton("📺 Canales de YouTube", callback_data="mode:channels")],
         [InlineKeyboardButton("🎲 Set Aleatorio (Sorpresa)", callback_data="mode:random")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -58,6 +59,7 @@ async def clean_start_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     keyboard = [
         [InlineKeyboardButton("🎵 Buscar por Género (Artistas)", callback_data="mode:genres")],
         [InlineKeyboardButton("🎪 Buscar por Festival", callback_data="mode:events")],
+        [InlineKeyboardButton("📺 Canales de YouTube", callback_data="mode:channels")],
         [InlineKeyboardButton("🎲 Set Aleatorio (Sorpresa)", callback_data="mode:random")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -162,8 +164,65 @@ async def specific_events_menu(update: Update, context: ContextTypes.DEFAULT_TYP
     )
 
 
+async def show_channels_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Muestra opciones para canales de YouTube: Buscar en todos o elegir uno específico."""
+    query = update.callback_query
+    await query.answer()
+
+    channels_config = get_channels_config()
+    if not channels_config:
+        await query.edit_message_text("❌ No se encontró la configuración de canales (`channels.json`).")
+        return
+
+    keyboard = [
+        [InlineKeyboardButton("🔥 Sets Más Recientes (Último Mes)", callback_data="channel_mode:all")],
+        [InlineKeyboardButton("🎯 Seleccionar Canal Específico (Último Año)", callback_data="channel_mode:specific")],
+        [InlineKeyboardButton("« Volver al Menú Principal", callback_data="back:main")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        "📺 *Canales Oficiales de YouTube:*\n\n"
+        "¿Cómo deseas buscar?",
+        reply_markup=reply_markup,
+        parse_mode="Markdown"
+    )
+
+
+async def specific_channels_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Muestra la grilla con los canales de YouTube configurados."""
+    query = update.callback_query
+    await query.answer()
+
+    channels_config = get_channels_config()
+    all_channels = []
+    for ch_list in channels_config.values():
+        for ch in ch_list:
+            if ch.get("name"):
+                all_channels.append(ch.get("name"))
+
+    keyboard = []
+    row = []
+    for name in all_channels:
+        row.append(InlineKeyboardButton(name, callback_data=f"select_channel:{name}"))
+        if len(row) == 2:
+            keyboard.append(row)
+            row = []
+    if row:
+        keyboard.append(row)
+
+    keyboard.append([InlineKeyboardButton("« Volver a Canales", callback_data="mode:channels")])
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await query.edit_message_text(
+        "📺 *Selecciona un Canal de YouTube:*",
+        reply_markup=reply_markup,
+        parse_mode="Markdown"
+    )
+
+
 async def select_item_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Maneja la selección. Para géneros pide meses. Para festivales específicos busca directo 12 meses."""
+    """Maneja la selección para géneros, festivales o canales."""
     query = update.callback_query
     await query.answer()
 
@@ -199,6 +258,11 @@ async def select_item_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         context.user_data['search_type'] = "event"
         context.user_data['selected_item'] = event_name
         await execute_search(update, context, months=12)
+    elif data.startswith("select_channel:"):
+        channel_name = data.split(":", 1)[1]
+        context.user_data['search_type'] = "channel"
+        context.user_data['selected_item'] = channel_name
+        await execute_search(update, context, months=12)
 
 
 async def all_events_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -211,8 +275,18 @@ async def all_events_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     await execute_search(update, context, months=1)
 
 
+async def all_channels_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Maneja la búsqueda en todos los canales de YouTube fijado al último mes."""
+    query = update.callback_query
+    await query.answer()
+
+    context.user_data['search_type'] = "all_channels"
+    context.user_data['selected_item'] = "Todos los Canales"
+    await execute_search(update, context, months=1)
+
+
 async def random_set_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """Obtiene y presenta un set musical aleatorio de la base de artistas o festivales."""
+    """Obtiene y presenta un set musical aleatorio de la base de artistas, festivales o canales."""
     query = update.callback_query
     await query.answer()
 
@@ -220,6 +294,7 @@ async def random_set_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     artists_config = get_artists_config()
     events_config = get_events_config()
+    channels_config = get_channels_config()
 
     candidates = []
 
@@ -239,8 +314,16 @@ async def random_set_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
                 "type": "Festival"
             })
 
+    for cat, channel_list in channels_config.items():
+        for ch in channel_list:
+            candidates.append({
+                "name": ch.get("name"),
+                "sources": ch.get("sources", []),
+                "type": "Canal YouTube"
+            })
+
     if not candidates:
-        await query.edit_message_text("❌ No hay artistas ni festivales configurados en el bot.")
+        await query.edit_message_text("❌ No hay artistas, festivales ni canales configurados en el bot.")
         return
 
     attempts = 0
@@ -304,7 +387,7 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
             await update.message.reply_text(msg)
         return
 
-    label = f"sets de *{clean_markdown_title(selected_item)}*" if search_type in ("event", "all_events") else f"sets del género *{clean_markdown_title(selected_item)}*"
+    label = f"sets de *{clean_markdown_title(selected_item)}*" if search_type in ("event", "all_events", "channel", "all_channels") else f"sets del género *{clean_markdown_title(selected_item)}*"
     status_text = f"🔍 Buscando {label} (últimos *{months}* meses)...\nEsto puede demorar unos segundos."
     
     if query:
@@ -367,6 +450,47 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
                 ev_name = ev.get("name")
                 found_total += len(sets)
                 block = [f"🎪 *{clean_markdown_title(ev_name)}*"]
+                for item in sets[:3]:
+                    title_clean = clean_markdown_title(item['title'])
+                    dur_info = f" (`{item['duration_min']} min`)" if item.get('duration_min') else ""
+                    block.append(f"• [{title_clean}]({item['url']}){dur_info}")
+                results_blocks.append("\n".join(block))
+
+    elif search_type == "channel":
+        channels_config = get_channels_config()
+        ch_sources = []
+        for cat_list in channels_config.values():
+            for ch in cat_list:
+                if ch.get("name") == selected_item:
+                    ch_sources = ch.get("sources", [])
+                    break
+
+        sets = await fetch_recent_sets_async(selected_item, ch_sources, months)
+        if sets:
+            found_total += len(sets)
+            block = [f"📺 *{clean_markdown_title(selected_item)}*"]
+            for item in sets[:8]:
+                title_clean = clean_markdown_title(item['title'])
+                dur_info = f" (`{item['duration_min']} min`)" if item.get('duration_min') else ""
+                block.append(f"• [{title_clean}]({item['url']}){dur_info}")
+            results_blocks.append("\n".join(block))
+
+    elif search_type == "all_channels":
+        channels_config = get_channels_config()
+        all_channels = []
+        for cat_list in channels_config.values():
+            for ch in cat_list:
+                if ch.get("name"):
+                    all_channels.append(ch)
+
+        tasks = [fetch_recent_sets_async(ch.get("name"), ch.get("sources", []), months) for ch in all_channels]
+        all_sets_results = await asyncio.gather(*tasks)
+
+        for ch, sets in zip(all_channels, all_sets_results):
+            if sets:
+                ch_name = ch.get("name")
+                found_total += len(sets)
+                block = [f"📺 *{clean_markdown_title(ch_name)}*"]
                 for item in sets[:3]:
                     title_clean = clean_markdown_title(item['title'])
                     dur_info = f" (`{item['duration_min']} min`)" if item.get('duration_min') else ""
@@ -466,10 +590,13 @@ def setup_handlers(app: Application):
     app.add_handler(CallbackQueryHandler(clean_start_callback, pattern="^clean:start$"))
     app.add_handler(CallbackQueryHandler(show_genres_menu, pattern="^mode:genres$"))
     app.add_handler(CallbackQueryHandler(show_events_menu, pattern="^mode:events$"))
+    app.add_handler(CallbackQueryHandler(show_channels_menu, pattern="^mode:channels$"))
     app.add_handler(CallbackQueryHandler(specific_events_menu, pattern="^event_mode:specific$"))
     app.add_handler(CallbackQueryHandler(all_events_callback, pattern="^event_mode:all$"))
+    app.add_handler(CallbackQueryHandler(specific_channels_menu, pattern="^channel_mode:specific$"))
+    app.add_handler(CallbackQueryHandler(all_channels_callback, pattern="^channel_mode:all$"))
     app.add_handler(CallbackQueryHandler(random_set_callback, pattern="^mode:random$"))
-    app.add_handler(CallbackQueryHandler(select_item_callback, pattern="^select_(genre|event):"))
+    app.add_handler(CallbackQueryHandler(select_item_callback, pattern="^select_(genre|event|channel):"))
     app.add_handler(CallbackQueryHandler(months_callback, pattern="^months:"))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, months_input_handler))
     app.add_error_handler(error_handler)

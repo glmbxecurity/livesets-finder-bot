@@ -1,0 +1,8 @@
+{
+  "Canales de YouTube": [
+    { "name": "Tomorrowland", "sources": ["https://www.youtube.com/@Tomorrowland/videos"] },
+    { "name": "HÖR BERLIN", "sources": ["https://www.youtube.com/@HOERBERLIN/videos"] },
+    { "name": "Boiler Room", "sources": ["https://www.youtube.com/@boilerroom/videos"] },
+    { "name": "Q-dance", "sources": ["https://www.youtube.com/@qdance/videos"] }
+  ]
+}

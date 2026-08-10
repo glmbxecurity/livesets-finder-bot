@@ -92,3 +92,32 @@ def get_events_config() -> dict:
         logger.error(f"Error inesperado leyendo {path}: {e}")
         return {}
 
+
+def get_channels_config() -> dict:
+    """Carga y valida el archivo de canales de YouTube JSON."""
+    file_path = os.getenv("CHANNELS_FILE", "channels.json")
+    path = Path(file_path)
+
+    if not path.exists():
+        example_path = Path("channels.json.example")
+        if example_path.exists():
+            logger.warning(f"'{file_path}' no encontrado. Usando '{example_path}' como fallback.")
+            path = example_path
+        else:
+            logger.error(f"No se encontró el archivo de configuración de canales en: {file_path}")
+            return {}
+
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            if not isinstance(data, dict):
+                logger.error(f"Estructura inválida en {path}: se esperaba un diccionario de canales.")
+                return {}
+            return data
+    except json.JSONDecodeError as e:
+        logger.error(f"Error parseando JSON en {path}: {e}")
+        return {}
+    except Exception as e:
+        logger.error(f"Error inesperado leyendo {path}: {e}")
+        return {}
+
