@@ -1,0 +1,8 @@
+{
+  "Festivales": [
+    { "name": "Tomorrowland", "sources": [] },
+    { "name": "Awakenings", "sources": [] },
+    { "name": "Defqon.1", "sources": [] },
+    { "name": "Ultra Music Festival", "sources": [] }
+  ]
+}

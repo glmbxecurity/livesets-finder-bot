@@ -1,0 +1,17 @@
+[Unit]
+Description=LiveSets Finder Telegram Bot Service
+After=network.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/livesets-finder-bot
+ExecStart=/opt/livesets-finder-bot/venv/bin/python /opt/livesets-finder-bot/main.py
+Restart=always
+RestartSec=5
+StandardOutput=append:/var/log/livesets-finder-bot.log
+StandardError=append:/var/log/livesets-finder-bot.err
+
+[Install]
+WantedBy=multi-user.target
