@@ -120,6 +120,7 @@ async def show_events_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
         [InlineKeyboardButton("🔥 Sets Más Recientes (Último Mes)", callback_data="event_mode:all")],
         [InlineKeyboardButton("🎯 Seleccionar Festival Específico (Último Año)", callback_data="event_mode:specific")],
+        [InlineKeyboardButton("🎲 Set Aleatorio de Festival (Sorpresa)", callback_data="event_mode:random")],
         [InlineKeyboardButton("« Volver al Menú Principal", callback_data="back:main")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
@@ -243,6 +244,9 @@ async def select_item_callback(update: Update, context: ContextTypes.DEFAULT_TYP
                 InlineKeyboardButton("12 Meses", callback_data="months:12"),
             ],
             [
+                InlineKeyboardButton(f"🎲 Set Aleatorio ({genre_name})", callback_data=f"genre_random:{genre_name}")
+            ],
+            [
                 InlineKeyboardButton("« Volver", callback_data="mode:genres")
             ]
         ]
@@ -250,7 +254,7 @@ async def select_item_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
         await query.edit_message_text(
             f"✅ Género seleccionado: *{genre_name}*\n\n"
-            "📅 Selecciona el rango de antigüedad de los sets:",
+            "📅 Selecciona el rango de antigüedad de los sets o elige un set aleatorio:",
             reply_markup=reply_markup,
             parse_mode="Markdown"
         )
@@ -274,6 +278,140 @@ async def all_events_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     context.user_data['search_type'] = "all_events"
     context.user_data['selected_item'] = "Todos los Festivales"
     await execute_search(update, context, months=1)
+
+
+async def random_event_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Sortea y busca un set aleatorio únicamente dentro de los festivales."""
+    query = update.callback_query
+    await query.answer()
+
+    await query.edit_message_text("🎲 *Sorteando y buscando un set en festivales...*", parse_mode="Markdown")
+
+    events_config = get_events_config()
+    candidates = []
+
+    for cat, event_list in events_config.items():
+        for ev in event_list:
+            if ev.get("name"):
+                candidates.append({
+                    "name": ev.get("name"),
+                    "sources": ev.get("sources", []),
+                    "type": "Festival"
+                })
+
+    if not candidates:
+        await query.edit_message_text("❌ No hay festivales configurados en `events.json`.")
+        return
+
+    attempts = 0
+    found_set = None
+    chosen_candidate = None
+
+    while attempts < 3 and not found_set:
+        attempts += 1
+        candidate = random.choice(candidates)
+        sets = await fetch_recent_sets_async(candidate["name"], candidate["sources"], 12)
+        if sets:
+            found_set = random.choice(sets)
+            chosen_candidate = candidate
+
+    keyboard = [
+        [InlineKeyboardButton("🎲 Buscar Otro Set de Festival", callback_data="event_mode:random")],
+        [
+            InlineKeyboardButton("« Volver a Festivales", callback_data="mode:events"),
+            InlineKeyboardButton("🏠 Inicio", callback_data="back:main")
+        ],
+        [InlineKeyboardButton("🗑️ Limpiar e Inicio", callback_data="clean:start")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    if not found_set:
+        await query.edit_message_text(
+            "🚫 No se encontró ningún set en festivales en este intento. ¡Prueba otra vez!",
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+        return
+
+    title_clean = clean_markdown_title(found_set['title'])
+    dur_info = f" (`{found_set['duration_min']} min`)" if found_set.get('duration_min') else ""
+
+    msg_text = (
+        "🎪 *Set Aleatorio de Festival Found!*\n\n"
+        f"📍 *{clean_markdown_title(chosen_candidate['name'])}* _(Festival)_\n"
+        f"🎧 [{title_clean}]({found_set['url']}){dur_info}\n\n"
+        f"🗓️ Fecha/Estado: `{found_set.get('upload_date', 'Desconocida')}`"
+    )
+
+    await query.edit_message_text(
+        msg_text,
+        reply_markup=reply_markup,
+        parse_mode="Markdown",
+        disable_web_page_preview=True
+    )
+
+
+async def random_genre_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Sortea un artista dentro de un género específico y devuelve un set aleatorio."""
+    query = update.callback_query
+    await query.answer()
+
+    genre_name = query.data.split(":", 1)[1]
+    await query.edit_message_text(f"🎲 *Sorteando y buscando un set aleatorio de {clean_markdown_title(genre_name)}...*", parse_mode="Markdown")
+
+    artists_config = get_artists_config()
+    artist_list = artists_config.get(genre_name, [])
+
+    if not artist_list:
+        await query.edit_message_text(f"❌ No se encontraron artistas en el género `{genre_name}`.")
+        return
+
+    attempts = 0
+    found_set = None
+    chosen_artist = None
+
+    while attempts < 3 and not found_set:
+        attempts += 1
+        artist = random.choice(artist_list)
+        sets = await fetch_recent_sets_async(artist.get("name", "Artista"), artist.get("sources", []), 12)
+        if sets:
+            found_set = random.choice(sets)
+            chosen_artist = artist
+
+    keyboard = [
+        [InlineKeyboardButton(f"🎲 Buscar Otro Set de {genre_name}", callback_data=f"genre_random:{genre_name}")],
+        [
+            InlineKeyboardButton("« Volver a Géneros", callback_data="mode:genres"),
+            InlineKeyboardButton("🏠 Inicio", callback_data="back:main")
+        ],
+        [InlineKeyboardButton("🗑️ Limpiar e Inicio", callback_data="clean:start")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    if not found_set:
+        await query.edit_message_text(
+            f"🚫 No se encontró ningún set en {clean_markdown_title(genre_name)} en este intento. ¡Prueba otra vez!",
+            reply_markup=reply_markup,
+            parse_mode="Markdown"
+        )
+        return
+
+    title_clean = clean_markdown_title(found_set['title'])
+    dur_info = f" (`{found_set['duration_min']} min`)" if found_set.get('duration_min') else ""
+
+    msg_text = (
+        f"🎵 *Set Aleatorio de {clean_markdown_title(genre_name)} Found!*\n\n"
+        f"📍 *{clean_markdown_title(chosen_artist.get('name', 'Artista'))}* _({clean_markdown_title(genre_name)})_\n"
+        f"🎧 [{title_clean}]({found_set['url']}){dur_info}\n\n"
+        f"🗓️ Fecha/Estado: `{found_set.get('upload_date', 'Desconocida')}`"
+    )
+
+    await query.edit_message_text(
+        msg_text,
+        reply_markup=reply_markup,
+        parse_mode="Markdown",
+        disable_web_page_preview=True
+    )
 
 
 async def all_channels_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -664,9 +802,11 @@ def setup_handlers(app: Application):
     app.add_handler(CallbackQueryHandler(show_channels_menu, pattern="^mode:channels$"))
     app.add_handler(CallbackQueryHandler(specific_events_menu, pattern="^event_mode:specific$"))
     app.add_handler(CallbackQueryHandler(all_events_callback, pattern="^event_mode:all$"))
+    app.add_handler(CallbackQueryHandler(random_event_callback, pattern="^event_mode:random$"))
     app.add_handler(CallbackQueryHandler(specific_channels_menu, pattern="^channel_mode:specific$"))
     app.add_handler(CallbackQueryHandler(all_channels_callback, pattern="^channel_mode:all$"))
     app.add_handler(CallbackQueryHandler(random_channel_callback, pattern="^channel_mode:random$"))
+    app.add_handler(CallbackQueryHandler(random_genre_callback, pattern="^genre_random:"))
     app.add_handler(CallbackQueryHandler(random_set_callback, pattern="^mode:random$"))
     app.add_handler(CallbackQueryHandler(select_item_callback, pattern="^select_(genre|event|channel):"))
     app.add_handler(CallbackQueryHandler(months_callback, pattern="^months:"))
