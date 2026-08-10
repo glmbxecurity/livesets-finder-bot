@@ -129,6 +129,13 @@ rc-service livesets-finder-bot start
 rc-update add livesets-finder-bot default
 ```
 
+#### 💡 Solución de Problemas (Troubleshooting OpenRC)
+Si el bot indica `Conflict: terminated by other getUpdates request` (conflicto por ejecutar dos instancias simultáneas en local y servidor) o el servicio queda en estado `crashed`/`unsupervised`:
+```bash
+rc-service livesets-finder-bot zap
+rc-service livesets-finder-bot start
+```
+
 ---
 
 ## 📂 Estructura del Repositorio
