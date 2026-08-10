@@ -17,7 +17,7 @@ Permite explorar por **Géneros / Artistas**, **Festivales**, **Canales Oficiale
 
 ## 📖 ¿En qué consiste este proyecto?
 
-El bot lee dinámicamente los artistas desde `artists.json` (4 géneros y 53 artistas), los eventos desde `events.json` (26 festivales icónicos) y los canales oficiales desde `channels.json` (14 canales principales). Ejecuta consultas concurrentes en segundo plano usando un pool de hilos (`ThreadPoolExecutor` + `asyncio.gather`), reduciendo los tiempos de escaneo masivo a solo ~35 segundos.
+El bot lee dinámicamente los artistas desde `artists.json` (4 géneros y 50 artistas), los eventos desde `events.json` (26 festivales icónicos) y los canales oficiales desde `channels.json` (14 canales principales). Ejecuta consultas concurrentes en segundo plano usando un pool de hilos (`ThreadPoolExecutor` + `asyncio.gather`), reduciendo los tiempos de escaneo masivo a solo ~35 segundos.
 
 ### 🌟 Características Destacadas:
 * **4 Modos de Búsqueda Integrados**: 
