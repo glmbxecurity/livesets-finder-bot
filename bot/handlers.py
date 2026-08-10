@@ -1,4 +1,5 @@
 import asyncio
+import html
 import logging
 import random
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -16,13 +17,42 @@ from services.scraper import fetch_recent_sets_async
 logger = logging.getLogger(__name__)
 
 
-def clean_markdown_title(title: str) -> str:
-    """Escapa adecuadamente caracteres conflictivos para Markdown de Telegram."""
-    if not title:
-        return ""
-    for char in ['[', ']', '*', '_', '`']:
-        title = title.replace(char, f'\\{char}')
-    return title
+async def send_or_edit_safe(update: Update, text: str, reply_markup=None, parse_mode="HTML", disable_web_page_preview=True):
+    """Envía o edita un mensaje de Telegram intentando con parse_mode HTML y fallback sin parse_mode si falla."""
+    query = update.callback_query
+    try:
+        if query and query.message:
+            return await query.edit_message_text(
+                text,
+                reply_markup=reply_markup,
+                parse_mode=parse_mode,
+                disable_web_page_preview=disable_web_page_preview
+            )
+        elif update.effective_message:
+            return await update.effective_message.reply_text(
+                text,
+                reply_markup=reply_markup,
+                parse_mode=parse_mode,
+                disable_web_page_preview=disable_web_page_preview
+            )
+    except Exception as e:
+        logger.warning(f"Error al enviar mensaje formateado ({e}). Reintentando sin parse_mode...")
+        plain_text = text.replace("<b>", "").replace("</b>", "").replace("<i>", "").replace("</i>", "").replace("<code>", "").replace("</code>", "")
+        try:
+            if query and query.message:
+                return await query.edit_message_text(
+                    plain_text,
+                    reply_markup=reply_markup,
+                    disable_web_page_preview=disable_web_page_preview
+                )
+            elif update.effective_message:
+                return await update.effective_message.reply_text(
+                    plain_text,
+                    reply_markup=reply_markup,
+                    disable_web_page_preview=disable_web_page_preview
+                )
+        except Exception as e2:
+            logger.error(f"Error en fallback de envío: {e2}")
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -35,15 +65,11 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     text = (
-        "🎧 *Bienvenido a LiveSets Finder Bot*\n\n"
+        "🎧 <b>Bienvenido a LiveSets Finder Bot</b>\n\n"
         "¿Qué querés buscar hoy? Seleccioná una opción:"
     )
 
-    if update.callback_query:
-        await update.callback_query.answer()
-        await update.callback_query.edit_message_text(text, reply_markup=reply_markup, parse_mode="Markdown")
-    else:
-        await update.message.reply_text(text, reply_markup=reply_markup, parse_mode="Markdown")
+    await send_or_edit_safe(update, text, reply_markup=reply_markup, disable_web_page_preview=False)
 
 
 async def clean_start_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -64,7 +90,7 @@ async def clean_start_callback(update: Update, context: ContextTypes.DEFAULT_TYP
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
     text = (
-        "🎧 *Bienvenido a LiveSets Finder Bot*\n\n"
+        "🎧 <b>Bienvenido a LiveSets Finder Bot</b>\n\n"
         "¿Qué querés buscar hoy? Seleccioná una opción:"
     )
 
@@ -72,7 +98,7 @@ async def clean_start_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         chat_id=update.effective_chat.id,
         text=text,
         reply_markup=reply_markup,
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
 
 
@@ -83,7 +109,7 @@ async def show_genres_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     artists_config = get_artists_config()
     if not artists_config:
-        await query.edit_message_text("❌ No se encontró la configuración de artistas (`artists.json`).")
+        await send_or_edit_safe(update, "❌ No se encontró la configuración de artistas (<code>artists.json</code>).")
         return
 
     genres = list(artists_config.keys())
@@ -100,10 +126,10 @@ async def show_genres_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard.append([InlineKeyboardButton("« Volver al Menú Principal", callback_data="back:main")])
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await query.edit_message_text(
-        "🎵 *Selecciona un género musical:*",
-        reply_markup=reply_markup,
-        parse_mode="Markdown"
+    await send_or_edit_safe(
+        update,
+        "🎵 <b>Selecciona un género musical:</b>",
+        reply_markup=reply_markup
     )
 
 
@@ -114,7 +140,7 @@ async def show_events_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     events_config = get_events_config()
     if not events_config:
-        await query.edit_message_text("❌ No se encontró la configuración de eventos (`events.json`).")
+        await send_or_edit_safe(update, "❌ No se encontró la configuración de eventos (<code>events.json</code>).")
         return
 
     keyboard = [
@@ -125,11 +151,10 @@ async def show_events_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await query.edit_message_text(
-        "🎪 *Búsqueda por Festival:*\n\n"
-        "¿Cómo deseas buscar?",
-        reply_markup=reply_markup,
-        parse_mode="Markdown"
+    await send_or_edit_safe(
+        update,
+        "🎪 <b>Búsqueda por Festival:</b>\n\n¿Cómo deseas buscar?",
+        reply_markup=reply_markup
     )
 
 
@@ -158,10 +183,10 @@ async def specific_events_menu(update: Update, context: ContextTypes.DEFAULT_TYP
     keyboard.append([InlineKeyboardButton("« Volver a Festivales", callback_data="mode:events")])
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await query.edit_message_text(
-        "🎪 *Selecciona un Festival:*",
-        reply_markup=reply_markup,
-        parse_mode="Markdown"
+    await send_or_edit_safe(
+        update,
+        "🎪 <b>Selecciona un Festival:</b>",
+        reply_markup=reply_markup
     )
 
 
@@ -172,7 +197,7 @@ async def show_channels_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     channels_config = get_channels_config()
     if not channels_config:
-        await query.edit_message_text("❌ No se encontró la configuración de canales (`channels.json`).")
+        await send_or_edit_safe(update, "❌ No se encontró la configuración de canales (<code>channels.json</code>).")
         return
 
     keyboard = [
@@ -183,11 +208,10 @@ async def show_channels_menu(update: Update, context: ContextTypes.DEFAULT_TYPE)
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await query.edit_message_text(
-        "📺 *Canales Oficiales de YouTube:*\n\n"
-        "¿Cómo deseas buscar?",
-        reply_markup=reply_markup,
-        parse_mode="Markdown"
+    await send_or_edit_safe(
+        update,
+        "📺 <b>Canales Oficiales de YouTube:</b>\n\n¿Cómo deseas buscar?",
+        reply_markup=reply_markup
     )
 
 
@@ -216,10 +240,10 @@ async def specific_channels_menu(update: Update, context: ContextTypes.DEFAULT_T
     keyboard.append([InlineKeyboardButton("« Volver a Canales", callback_data="mode:channels")])
     reply_markup = InlineKeyboardMarkup(keyboard)
 
-    await query.edit_message_text(
-        "📺 *Selecciona un Canal de YouTube:*",
-        reply_markup=reply_markup,
-        parse_mode="Markdown"
+    await send_or_edit_safe(
+        update,
+        "📺 <b>Selecciona un Canal de YouTube:</b>",
+        reply_markup=reply_markup
     )
 
 
@@ -252,11 +276,11 @@ async def select_item_callback(update: Update, context: ContextTypes.DEFAULT_TYP
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
 
-        await query.edit_message_text(
-            f"✅ Género seleccionado: *{genre_name}*\n\n"
+        await send_or_edit_safe(
+            update,
+            f"✅ Género seleccionado: <b>{html.escape(genre_name)}</b>\n\n"
             "📅 Selecciona el rango de antigüedad de los sets o elige un set aleatorio:",
-            reply_markup=reply_markup,
-            parse_mode="Markdown"
+            reply_markup=reply_markup
         )
     elif data.startswith("select_event:"):
         event_name = data.split(":", 1)[1]
@@ -285,7 +309,7 @@ async def random_event_callback(update: Update, context: ContextTypes.DEFAULT_TY
     query = update.callback_query
     await query.answer()
 
-    await query.edit_message_text("🎲 *Sorteando y buscando un set en festivales...*", parse_mode="Markdown")
+    await send_or_edit_safe(update, "🎲 <b>Sorteando y buscando un set en festivales...</b>")
 
     events_config = get_events_config()
     candidates = []
@@ -300,7 +324,7 @@ async def random_event_callback(update: Update, context: ContextTypes.DEFAULT_TY
                 })
 
     if not candidates:
-        await query.edit_message_text("❌ No hay festivales configurados en `events.json`.")
+        await send_or_edit_safe(update, "❌ No hay festivales configurados en <code>events.json</code>.")
         return
 
     attempts = 0
@@ -326,29 +350,24 @@ async def random_event_callback(update: Update, context: ContextTypes.DEFAULT_TY
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     if not found_set:
-        await query.edit_message_text(
+        await send_or_edit_safe(
+            update,
             "🚫 No se encontró ningún set en festivales en este intento. ¡Prueba otra vez!",
-            reply_markup=reply_markup,
-            parse_mode="Markdown"
+            reply_markup=reply_markup
         )
         return
 
-    title_clean = clean_markdown_title(found_set['title'])
-    dur_info = f" (`{found_set['duration_min']} min`)" if found_set.get('duration_min') else ""
+    title_escaped = html.escape(found_set['title'])
+    dur_info = f" (<code>{found_set['duration_min']} min</code>)" if found_set.get('duration_min') else ""
 
     msg_text = (
-        "🎪 *Set Aleatorio de Festival Found!*\n\n"
-        f"📍 *{clean_markdown_title(chosen_candidate['name'])}* _(Festival)_\n"
-        f"🎧 [{title_clean}]({found_set['url']}){dur_info}\n\n"
-        f"🗓️ Fecha/Estado: `{found_set.get('upload_date', 'Desconocida')}`"
+        "🎪 <b>Set Aleatorio de Festival Found!</b>\n\n"
+        f"📍 <b>{html.escape(chosen_candidate['name'])}</b> <i>(Festival)</i>\n"
+        f"🎧 <a href=\"{found_set['url']}\">{title_escaped}</a>{dur_info}\n\n"
+        f"🗓️ Fecha/Estado: <code>{found_set.get('upload_date', 'Desconocida')}</code>"
     )
 
-    await query.edit_message_text(
-        msg_text,
-        reply_markup=reply_markup,
-        parse_mode="Markdown",
-        disable_web_page_preview=True
-    )
+    await send_or_edit_safe(update, msg_text, reply_markup=reply_markup)
 
 
 async def random_genre_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -357,13 +376,13 @@ async def random_genre_callback(update: Update, context: ContextTypes.DEFAULT_TY
     await query.answer()
 
     genre_name = query.data.split(":", 1)[1]
-    await query.edit_message_text(f"🎲 *Sorteando y buscando un set aleatorio de {clean_markdown_title(genre_name)}...*", parse_mode="Markdown")
+    await send_or_edit_safe(update, f"🎲 <b>Sorteando y buscando un set aleatorio de {html.escape(genre_name)}...</b>")
 
     artists_config = get_artists_config()
     artist_list = artists_config.get(genre_name, [])
 
     if not artist_list:
-        await query.edit_message_text(f"❌ No se encontraron artistas en el género `{genre_name}`.")
+        await send_or_edit_safe(update, f"❌ No se encontraron artistas en el género <code>{html.escape(genre_name)}</code>.")
         return
 
     attempts = 0
@@ -389,29 +408,24 @@ async def random_genre_callback(update: Update, context: ContextTypes.DEFAULT_TY
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     if not found_set:
-        await query.edit_message_text(
-            f"🚫 No se encontró ningún set en {clean_markdown_title(genre_name)} en este intento. ¡Prueba otra vez!",
-            reply_markup=reply_markup,
-            parse_mode="Markdown"
+        await send_or_edit_safe(
+            update,
+            f"🚫 No se encontró ningún set en {html.escape(genre_name)} en este intento. ¡Prueba otra vez!",
+            reply_markup=reply_markup
         )
         return
 
-    title_clean = clean_markdown_title(found_set['title'])
-    dur_info = f" (`{found_set['duration_min']} min`)" if found_set.get('duration_min') else ""
+    title_escaped = html.escape(found_set['title'])
+    dur_info = f" (<code>{found_set['duration_min']} min</code>)" if found_set.get('duration_min') else ""
 
     msg_text = (
-        f"🎵 *Set Aleatorio de {clean_markdown_title(genre_name)} Found!*\n\n"
-        f"📍 *{clean_markdown_title(chosen_artist.get('name', 'Artista'))}* _({clean_markdown_title(genre_name)})_\n"
-        f"🎧 [{title_clean}]({found_set['url']}){dur_info}\n\n"
-        f"🗓️ Fecha/Estado: `{found_set.get('upload_date', 'Desconocida')}`"
+        f"🎵 <b>Set Aleatorio de {html.escape(genre_name)} Found!</b>\n\n"
+        f"📍 <b>{html.escape(chosen_artist.get('name', 'Artista'))}</b> <i>({html.escape(genre_name)})</i>\n"
+        f"🎧 <a href=\"{found_set['url']}\">{title_escaped}</a>{dur_info}\n\n"
+        f"🗓️ Fecha/Estado: <code>{found_set.get('upload_date', 'Desconocida')}</code>"
     )
 
-    await query.edit_message_text(
-        msg_text,
-        reply_markup=reply_markup,
-        parse_mode="Markdown",
-        disable_web_page_preview=True
-    )
+    await send_or_edit_safe(update, msg_text, reply_markup=reply_markup)
 
 
 async def all_channels_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -429,7 +443,7 @@ async def random_channel_callback(update: Update, context: ContextTypes.DEFAULT_
     query = update.callback_query
     await query.answer()
 
-    await query.edit_message_text("🎲 *Sorteando y buscando un set en los canales de YouTube...*", parse_mode="Markdown")
+    await send_or_edit_safe(update, "🎲 <b>Sorteando y buscando un set en los canales de YouTube...</b>")
 
     channels_config = get_channels_config()
     candidates = []
@@ -443,7 +457,7 @@ async def random_channel_callback(update: Update, context: ContextTypes.DEFAULT_
             })
 
     if not candidates:
-        await query.edit_message_text("❌ No hay canales configurados en `channels.json`.")
+        await send_or_edit_safe(update, "❌ No hay canales configurados en <code>channels.json</code>.")
         return
 
     attempts = 0
@@ -469,29 +483,24 @@ async def random_channel_callback(update: Update, context: ContextTypes.DEFAULT_
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     if not found_set:
-        await query.edit_message_text(
+        await send_or_edit_safe(
+            update,
             "🚫 No se encontró ningún set en los canales en este intento. ¡Prueba otra vez!",
-            reply_markup=reply_markup,
-            parse_mode="Markdown"
+            reply_markup=reply_markup
         )
         return
 
-    title_clean = clean_markdown_title(found_set['title'])
-    dur_info = f" (`{found_set['duration_min']} min`)" if found_set.get('duration_min') else ""
+    title_escaped = html.escape(found_set['title'])
+    dur_info = f" (<code>{found_set['duration_min']} min</code>)" if found_set.get('duration_min') else ""
 
     msg_text = (
-        "📺 *Set Aleatorio de Canal Found!*\n\n"
-        f"📍 *{clean_markdown_title(chosen_candidate['name'])}* _(Canal YouTube)_\n"
-        f"🎧 [{title_clean}]({found_set['url']}){dur_info}\n\n"
-        f"🗓️ Fecha/Estado: `{found_set.get('upload_date', 'Desconocida')}`"
+        "📺 <b>Set Aleatorio de Canal Found!</b>\n\n"
+        f"📍 <b>{html.escape(chosen_candidate['name'])}</b> <i>(Canal YouTube)</i>\n"
+        f"🎧 <a href=\"{found_set['url']}\">{title_escaped}</a>{dur_info}\n\n"
+        f"🗓️ Fecha/Estado: <code>{found_set.get('upload_date', 'Desconocida')}</code>"
     )
 
-    await query.edit_message_text(
-        msg_text,
-        reply_markup=reply_markup,
-        parse_mode="Markdown",
-        disable_web_page_preview=True
-    )
+    await send_or_edit_safe(update, msg_text, reply_markup=reply_markup)
 
 
 async def random_set_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -499,7 +508,7 @@ async def random_set_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     query = update.callback_query
     await query.answer()
 
-    await query.edit_message_text("🎲 *Sorteando y buscando un set aleatorio...*", parse_mode="Markdown")
+    await send_or_edit_safe(update, "🎲 <b>Sorteando y buscando un set aleatorio...</b>")
 
     artists_config = get_artists_config()
     events_config = get_events_config()
@@ -532,7 +541,7 @@ async def random_set_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
             })
 
     if not candidates:
-        await query.edit_message_text("❌ No hay artistas, festivales ni canales configurados en el bot.")
+        await send_or_edit_safe(update, "❌ No hay artistas, festivales ni canales configurados en el bot.")
         return
 
     attempts = 0
@@ -557,29 +566,24 @@ async def random_set_callback(update: Update, context: ContextTypes.DEFAULT_TYPE
     reply_markup = InlineKeyboardMarkup(keyboard)
 
     if not found_set:
-        await query.edit_message_text(
+        await send_or_edit_safe(
+            update,
             "🚫 No se encontró ningún set aleatorio en este intento. ¡Prueba otra vez!",
-            reply_markup=reply_markup,
-            parse_mode="Markdown"
+            reply_markup=reply_markup
         )
         return
 
-    title_clean = clean_markdown_title(found_set['title'])
-    dur_info = f" (`{found_set['duration_min']} min`)" if found_set.get('duration_min') else ""
+    title_escaped = html.escape(found_set['title'])
+    dur_info = f" (<code>{found_set['duration_min']} min</code>)" if found_set.get('duration_min') else ""
 
     msg_text = (
-        "🎲 *Set Aleatorio Sorpresa Found!*\n\n"
-        f"📍 *{clean_markdown_title(chosen_candidate['name'])}* _{clean_markdown_title(chosen_candidate['type'])}_\n"
-        f"🎧 [{title_clean}]({found_set['url']}){dur_info}\n\n"
-        f"🗓️ Fecha/Estado: `{found_set.get('upload_date', 'Desconocida')}`"
+        "🎲 <b>Set Aleatorio Sorpresa Found!</b>\n\n"
+        f"📍 <b>{html.escape(chosen_candidate['name'])}</b> <i>({html.escape(chosen_candidate['type'])})</i>\n"
+        f"🎧 <a href=\"{found_set['url']}\">{title_escaped}</a>{dur_info}\n\n"
+        f"🗓️ Fecha/Estado: <code>{found_set.get('upload_date', 'Desconocida')}</code>"
     )
 
-    await query.edit_message_text(
-        msg_text,
-        reply_markup=reply_markup,
-        parse_mode="Markdown",
-        disable_web_page_preview=True
-    )
+    await send_or_edit_safe(update, msg_text, reply_markup=reply_markup)
 
 
 async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, months: int):
@@ -590,19 +594,13 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
 
     if not selected_item:
         msg = "⚠️ Selección vencida o inválida. Usá /start para comenzar."
-        if query:
-            await query.edit_message_text(msg)
-        else:
-            await update.message.reply_text(msg)
+        await send_or_edit_safe(update, msg)
         return
 
-    label = f"sets de *{clean_markdown_title(selected_item)}*" if search_type in ("event", "all_events", "channel", "all_channels") else f"sets del género *{clean_markdown_title(selected_item)}*"
-    status_text = f"🔍 Buscando {label} (últimos *{months}* meses)...\nEsto puede demorar unos segundos."
+    label = f"sets de <b>{html.escape(selected_item)}</b>" if search_type in ("event", "all_events", "channel", "all_channels") else f"sets del género <b>{html.escape(selected_item)}</b>"
+    status_text = f"🔍 Buscando {label} (últimos <b>{months}</b> meses)...\nEsto puede demorar unos segundos."
     
-    if query:
-        await query.edit_message_text(status_text, parse_mode="Markdown")
-    else:
-        await update.message.reply_text(status_text, parse_mode="Markdown")
+    await send_or_edit_safe(update, status_text)
 
     results_blocks = []
     found_total = 0
@@ -617,11 +615,11 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
             if sets:
                 name = artist.get('name', 'Artista')
                 found_total += len(sets)
-                block = [f"👤 *{clean_markdown_title(name)}*"]
+                block = [f"👤 <b>{html.escape(name)}</b>"]
                 for item in sets[:5]:
-                    title_clean = clean_markdown_title(item['title'])
-                    dur_info = f" (`{item['duration_min']} min`)" if item.get('duration_min') else ""
-                    block.append(f"• [{title_clean}]({item['url']}){dur_info}")
+                    title_escaped = html.escape(item['title'])
+                    dur_info = f" (<code>{item['duration_min']} min</code>)" if item.get('duration_min') else ""
+                    block.append(f"• <a href=\"{item['url']}\">{title_escaped}</a>{dur_info}")
                 results_blocks.append("\n".join(block))
 
     elif search_type == "event":
@@ -636,11 +634,11 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
         sets = await fetch_recent_sets_async(selected_item, event_sources, months)
         if sets:
             found_total += len(sets)
-            block = [f"🎪 *{clean_markdown_title(selected_item)}*"]
+            block = [f"🎪 <b>{html.escape(selected_item)}</b>"]
             for item in sets[:8]:
-                title_clean = clean_markdown_title(item['title'])
-                dur_info = f" (`{item['duration_min']} min`)" if item.get('duration_min') else ""
-                block.append(f"• [{title_clean}]({item['url']}){dur_info}")
+                title_escaped = html.escape(item['title'])
+                dur_info = f" (<code>{item['duration_min']} min</code>)" if item.get('duration_min') else ""
+                block.append(f"• <a href=\"{item['url']}\">{title_escaped}</a>{dur_info}")
             results_blocks.append("\n".join(block))
 
     elif search_type == "all_events":
@@ -658,11 +656,11 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
             if sets:
                 ev_name = ev.get("name")
                 found_total += len(sets)
-                block = [f"🎪 *{clean_markdown_title(ev_name)}*"]
+                block = [f"🎪 <b>{html.escape(ev_name)}</b>"]
                 for item in sets[:3]:
-                    title_clean = clean_markdown_title(item['title'])
-                    dur_info = f" (`{item['duration_min']} min`)" if item.get('duration_min') else ""
-                    block.append(f"• [{title_clean}]({item['url']}){dur_info}")
+                    title_escaped = html.escape(item['title'])
+                    dur_info = f" (<code>{item['duration_min']} min</code>)" if item.get('duration_min') else ""
+                    block.append(f"• <a href=\"{item['url']}\">{title_escaped}</a>{dur_info}")
                 results_blocks.append("\n".join(block))
 
     elif search_type == "channel":
@@ -677,11 +675,11 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
         sets = await fetch_recent_sets_async(selected_item, ch_sources, months)
         if sets:
             found_total += len(sets)
-            block = [f"📺 *{clean_markdown_title(selected_item)}*"]
+            block = [f"📺 <b>{html.escape(selected_item)}</b>"]
             for item in sets[:8]:
-                title_clean = clean_markdown_title(item['title'])
-                dur_info = f" (`{item['duration_min']} min`)" if item.get('duration_min') else ""
-                block.append(f"• [{title_clean}]({item['url']}){dur_info}")
+                title_escaped = html.escape(item['title'])
+                dur_info = f" (<code>{item['duration_min']} min</code>)" if item.get('duration_min') else ""
+                block.append(f"• <a href=\"{item['url']}\">{title_escaped}</a>{dur_info}")
             results_blocks.append("\n".join(block))
 
     elif search_type == "all_channels":
@@ -699,11 +697,11 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
             if sets:
                 ch_name = ch.get("name")
                 found_total += len(sets)
-                block = [f"📺 *{clean_markdown_title(ch_name)}*"]
+                block = [f"📺 <b>{html.escape(ch_name)}</b>"]
                 for item in sets[:3]:
-                    title_clean = clean_markdown_title(item['title'])
-                    dur_info = f" (`{item['duration_min']} min`)" if item.get('duration_min') else ""
-                    block.append(f"• [{title_clean}]({item['url']}){dur_info}")
+                    title_escaped = html.escape(item['title'])
+                    dur_info = f" (<code>{item['duration_min']} min</code>)" if item.get('duration_min') else ""
+                    block.append(f"• <a href=\"{item['url']}\">{title_escaped}</a>{dur_info}")
                 results_blocks.append("\n".join(block))
 
     nav_keyboard = [
@@ -715,22 +713,16 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
     nav_markup = InlineKeyboardMarkup(nav_keyboard)
 
     if found_total == 0:
-        final_msg = f"🚫 No se encontraron {label} en los últimos *{months}* meses."
-        if query:
-            await query.edit_message_text(final_msg, reply_markup=nav_markup, parse_mode="Markdown")
-        else:
-            await update.message.reply_text(final_msg, reply_markup=nav_markup, parse_mode="Markdown")
+        final_msg = f"🚫 No se encontraron {label} en los últimos <b>{months}</b> meses."
+        await send_or_edit_safe(update, final_msg, reply_markup=nav_markup)
         return
 
-    header = f"🎧 *LiveSets encontrados: {clean_markdown_title(selected_item)}* (últimos {months} meses)\n\n"
+    header = f"🎧 <b>LiveSets encontrados: {html.escape(selected_item)}</b> (últimos {months} meses)\n\n"
     full_message = header + "\n\n".join(results_blocks)
 
     chunk_size = 3800
     if len(full_message) <= chunk_size:
-        if query:
-            await query.edit_message_text(full_message, reply_markup=nav_markup, parse_mode="Markdown", disable_web_page_preview=True)
-        else:
-            await update.message.reply_text(full_message, reply_markup=nav_markup, parse_mode="Markdown", disable_web_page_preview=True)
+        await send_or_edit_safe(update, full_message, reply_markup=nav_markup)
     else:
         chunks = []
         curr_chunk = header
@@ -743,15 +735,10 @@ async def execute_search(update: Update, context: ContextTypes.DEFAULT_TYPE, mon
         if curr_chunk:
             chunks.append(curr_chunk)
 
-        if query:
-            await query.edit_message_text(chunks[0], parse_mode="Markdown", disable_web_page_preview=True)
-            for ch in chunks[1:-1]:
-                await query.message.reply_text(ch, parse_mode="Markdown", disable_web_page_preview=True)
-            await query.message.reply_text(chunks[-1], reply_markup=nav_markup, parse_mode="Markdown", disable_web_page_preview=True)
-        else:
-            for ch in chunks[:-1]:
-                await update.message.reply_text(ch, parse_mode="Markdown", disable_web_page_preview=True)
-            await update.message.reply_text(chunks[-1], reply_markup=nav_markup, parse_mode="Markdown", disable_web_page_preview=True)
+        await send_or_edit_safe(update, chunks[0])
+        for ch in chunks[1:-1]:
+            await update.effective_chat.send_message(ch, parse_mode="HTML", disable_web_page_preview=True)
+        await update.effective_chat.send_message(chunks[-1], reply_markup=nav_markup, parse_mode="HTML", disable_web_page_preview=True)
 
 
 async def months_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -774,9 +761,9 @@ async def months_input_handler(update: Update, context: ContextTypes.DEFAULT_TYP
         if months <= 0:
             raise ValueError()
     except ValueError:
-        await update.message.reply_text(
-            "❌ *Entrada no válida.* Por favor seleccioná una opción de los botones o enviá un número entero mayor a 0.",
-            parse_mode="Markdown"
+        await send_or_edit_safe(
+            update,
+            "❌ <b>Entrada no válida.</b> Por favor seleccioná una opción de los botones o enviá un número entero mayor a 0."
         )
         return
 
